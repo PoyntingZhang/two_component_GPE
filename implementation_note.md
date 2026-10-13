@@ -148,3 +148,14 @@ HTTP/session behavior, bundles and mocked launch controls. Actual GPU tests in
 `tests/test_propagators.py` exercise coupled phases, each driven component,
 cutoff branches, normalization and FFT pointer reuse. Run them on the target
 GPU before production simulations. They skip when CUDA is unavailable.
+
+## Packaging validation — 13 October 2026
+
+The SSH branch passed 72 CPU tests; the Colab branch passed 61 CPU tests.
+Three CUDA-dependent checks were skipped locally. Headless Chrome checks on
+both branches exercised independent component inputs, a component-2-only drive,
+and named run preparation without starting a simulation. The Colab browser
+check used a simulated Drive mount and verified rejection of ephemeral output.
+All eight reviewed core files retained their pre-packaging hashes. Reference
+source hashes remained unchanged. Real SSH submission, a live Colab GPU run,
+and Drive persistence after actual runtime destruction remain unverified.

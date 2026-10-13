@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from config.yaml_parser import dump_yaml, new_config, parse_yaml
 from gui_periphery.prepare_run import prepare_run
@@ -18,6 +19,8 @@ class RunBundleTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
+        guard=patch("gui_periphery.prepare_run.require_drive_path", side_effect=lambda path: Path(path).resolve())
+        guard.start(); self.addCleanup(guard.stop)
         self.config = new_config()
         self.path = self.root / "original.yaml"
         self.write_config()
@@ -35,11 +38,11 @@ class RunBundleTests(unittest.TestCase):
         self.assertEqual(loaded["stages"], self.config["stages"])
         self.assertEqual(loaded["simulation"]["N_grids"], self.config["simulation"]["N_grids"])
         self.assertEqual(loaded["simulation"]["simulation_range"], self.config["simulation"]["simulation_range"])
-        self.assertEqual(loaded["simulation"]["data_root"], "saved_data")
-        self.assertEqual(loaded["simulation"]["monitor_root"], "monitor_data")
+        self.assertEqual(loaded["simulation"]["data_root"], "data")
+        self.assertEqual(loaded["simulation"]["monitor_root"], "monitor")
         self.assertEqual(self.path.read_bytes(), original)
         self.assertTrue((folder / "notes.txt").read_text().startswith("Study a rotating cloud."))
-        for name in ("saved_data", "monitor_data", "logs"):
+        for name in ("data", "monitor", "logs"):
             self.assertTrue((folder / name).is_dir())
         for name in ("gui_periphery", "config_editor", "tests", ".git", ".venv"):
             self.assertFalse((folder / name).exists())

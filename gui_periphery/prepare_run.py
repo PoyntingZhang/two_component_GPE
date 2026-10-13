@@ -7,6 +7,9 @@ import json
 from pathlib import Path
 import re
 import shutil
+import os
+import shlex
+from gpe.io.drive_storage import DEFAULT_OUTPUT, require_drive_path
 
 from config.yaml_parser import dump_yaml, normalize_config, parse_yaml
 
@@ -22,12 +25,12 @@ def runtime_sources():
         sources.append(ROOT / "gpe" / f"{name}.py")
     for folder in ("gpe/core", "config"):
         sources.extend(sorted((ROOT / folder).glob("*.py")))
-    for name in ("__init__", "save", "state_io", "diagnostics", "nk_extraction", "atomic"):
+    for name in ("__init__", "save", "state_io", "diagnostics", "nk_extraction", "atomic", "drive_storage"):
         sources.append(ROOT / "gpe/io" / f"{name}.py")
     return sources
 
 
-def prepare_run(config_path, output="runs", name=None, notes="", *,
+def prepare_run(config_path, output=DEFAULT_OUTPUT, name=None, notes="", *,
                 cupy_package="cupy-cuda12x", input_paths=None):
     """Copy runtime sources and a validated YAML into a new, named run folder.
 
@@ -56,19 +59,21 @@ def prepare_run(config_path, output="runs", name=None, notes="", *,
         folder = Path(stage["save"]["directory"])
         if folder.is_absolute() or ".." in folder.parts:
             raise ValueError(f"Stage {index}: use a relative save.directory inside the run folder, or leave it blank.")
-    config["simulation"].update(data_root="saved_data", monitor_root="monitor_data")
+    config["simulation"].update(data_root="data", monitor_root="monitor")
     yaml_text = dump_yaml(config)
 
-    destination = Path(output).expanduser().resolve() / name
+    destination = require_drive_path(output) / name
     destination.mkdir(parents=True, exist_ok=False)
     for path in runtime_sources():
         target = destination / path.relative_to(ROOT)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
-    for path in sorted(TEMPLATES.glob("*.sh")):
+    for path in (TEMPLATES / "run.sh",):
         shutil.copy2(path, destination / path.name)
-    for folder in ("saved_data", "monitor_data", "logs"):
+    for folder in ("data", "monitor", "logs"):
         (destination / folder).mkdir()
+    mount = os.environ.get("GPE_DRIVE_MOUNT", "/content/drive")
+    (destination / "environment.sh").write_text("#!/usr/bin/env bash\nexport GPE_DRIVE_MOUNT=" + shlex.quote(mount) + "\n")
     (destination / "config/run.yaml").write_text(yaml_text)
     (destination / "notes.txt").write_text(notes.rstrip() + "\n")
     (destination / "requirements-gpu.txt").write_text(cupy_package + "\n")
@@ -76,7 +81,7 @@ def prepare_run(config_path, output="runs", name=None, notes="", *,
     (destination / ".gitignore").write_text("*\n")
     hashes = {str(path.relative_to(destination)): hashlib.sha256(path.read_bytes()).hexdigest()
               for path in sorted(destination.rglob("*")) if path.is_file()}
-    manifest = dict(name=name, created_utc=created.isoformat(), config="config/run.yaml",
+    manifest = dict(deployment="colab", name=name, created_utc=created.isoformat(), config="config/run.yaml",
                     cupy_package=cupy_package, files_sha256=hashes,
                     external_snapshots=[stage["initial_state"]["path"] for stage in config["stages"]
                                         if stage["initial_state"]["type"] == "load"])
@@ -87,7 +92,7 @@ def prepare_run(config_path, output="runs", name=None, notes="", *,
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("config", help="YAML file made by the editor or written by hand")
-    parser.add_argument("--output", default="runs", help="Parent folder for prepared runs")
+    parser.add_argument("--output", default=DEFAULT_OUTPUT, help="Parent folder on mounted Google Drive")
     parser.add_argument("--name", help="Run folder name; defaults to simulation_<UTC timestamp>")
     notes = parser.add_mutually_exclusive_group()
     notes.add_argument("--notes", default="", help="Purpose and other comments to save in notes.txt")
@@ -106,7 +111,7 @@ def main():
                              cupy_package=args.cupy_package, input_paths=paths)
     except (OSError, ValueError) as exc:
         parser.error(str(exc))
-    print(f"Prepared: {folder}\nNo files uploaded and no simulation launched.")
+    print(f"Prepared: {folder}\nPrepared on Google Drive; no simulation launched.")
     print("After transfer and environment setup, run from that folder: bash run.sh")
 
 

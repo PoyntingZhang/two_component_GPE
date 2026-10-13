@@ -23,7 +23,7 @@ def serial(values):
 def read_monitor(folder, stage_name="", spectrum_name="", image_kind="density_xy", image_limit=5,
                  image_name="", radial_name=""):
     folder = Path(folder).expanduser().resolve()
-    root = folder / "monitor_data" if (folder / "monitor_data").is_dir() else folder
+    root = folder / "monitor" if (folder / "monitor").is_dir() else folder
     candidates = sorted({path.parent for path in root.rglob("*.npz") if path.name != "grid.npz"}
                         | {path.parent for path in root.rglob("scalars.csv")}) if root.exists() else []
     stages = [str(path.relative_to(root)) for path in candidates]

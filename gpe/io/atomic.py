@@ -4,10 +4,12 @@ import json
 import os
 from pathlib import Path
 import numpy as np
+from .drive_storage import check_storage
 
 @contextmanager
 def atomic_file(path):
     path = Path(path)
+    check_storage(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".partial")
     with temporary.open("wb") as stream:

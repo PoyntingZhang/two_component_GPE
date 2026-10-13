@@ -1,50 +1,77 @@
-# Two-component GPE simulator — SSH branch
+# Two-component GPE simulator — Colab branch
 
-Density-coupled two-component 39K solver with the reference package's
-Experiment → Launch → Monitor interface. The sibling `GPE_simulator` is read-only.
-Important physics and storage decisions are in [implementation_note.md](implementation_note.md).
+This branch runs the two-component solver in a Colab GPU runtime and saves
+scheduled output **directly to Google Drive**. Use `git switch ssh` for the
+separate SSH/Slurm implementation. Commit edits before switching branches.
+The sibling `GPE_simulator` is read-only reference material.
 
-Use `git switch ssh` for SSH/Slurm launches and `git switch colab` for the dedicated
-Colab workflow. Commit edits before switching branches. No remote repository is
-configured automatically.
+## Start
 
-## SSH workflow
+Open [notebooks/Colab.ipynb](notebooks/Colab.ipynb) in Colab. Select a GPU runtime,
+mount Drive, and set the repository path and simulations parent. The default is:
 
-Install `gui_periphery/requirements.txt`, then run:
-
-```sh
-python -m gui_periphery.app
+```python
+from gui_periphery.colab import show
+show(output_parent='/content/drive/MyDrive/simulations')
 ```
 
-On macOS, `Open GPE.command` creates the local GUI environment and opens it.
-Configure both populations, all three scattering lengths, and each component's
-potentials. In Launch, choose a run name and description, enter the cluster
-settings, prepare, connect, upload and submit. Monitor's stage selector includes
-`component_1` and `component_2`; full wavefunctions remain remote.
+The notebook installs GUI dependencies and opens Experiment → Launch → Monitor.
+Configure both components, enter a launch name and purpose, prepare on Drive,
+then launch. Use the CuPy installation button only if the runtime needs it.
+Choose the wheel matching the runtime's CUDA environment.
+
+```text
+simulations/
+  mixture_trial/
+    config/run.yaml       Validated configuration actually used
+    notes.txt             Brief purpose and description
+    data/<run>/<stage>/
+      psi1_00001000.npy
+      psi2_00001000.npy
+      psi_00001000.json    Complete snapshot-pair manifest
+      grid.npz
+    monitor/<run>/<stage>/
+      component_1/        Scalars, spectra and selected images
+      component_2/
+    logs/
+    run.json              Creation information and source/config hashes
+    gpe/                  Exact runtime source copy
+    config/*.py
+    run.sh
+    environment.sh
+```
+
+Existing launch names are never overwritten. Colab preparation rejects output
+outside mounted Drive. The prepared YAML routes output inside that launch folder;
+stage overrides cannot escape it. Completed pairs and NPZ samples are published
+only after writing completes. Incomplete `.partial` files are not snapshots.
+
+A terminated runtime cannot continue computing, and unsaved steps/in-flight
+writes can be lost. Choose periodic saves; a final-only snapshot cannot protect
+an interrupted run. The mounted filesystem's flush/rename is not proof of cloud
+replication. Check a completed output in Drive before a long run. See
+[Colab's Drive guidance](https://research.google.com/colaboratory/faq.html).
+
+After reconnecting, rerun the setup cells and use **Reopen a saved run** with its
+Drive launch folder. Monitoring reads those files directly. To continue evolution,
+prepare a new run with `initial_state.type: load` and the complete `psi_STEP.json`
+path. This begins a new stage clock, not an automatic exact-time restart.
+
+## Model and validation
+
+The reviewed physics is in `gpe/core/`, unchanged by packaging. Schema 3 adds N1,
+N2, a11, a22, a12, separate widths and `potential1`/`potential2`. Example scattering
+lengths are illustrative, not a calibrated 39K magnetic-field prescription.
+Imaginary-time preparation retains its accepted first-order timestep bias.
+Read [implementation_note.md](implementation_note.md) for units, limitations,
+memory considerations and the modification boundary.
 
 ```sh
 python -m gpe.main config/examples/kick_and_hold.yaml --check
-python -m gui_periphery.prepare_run config/examples/kick_and_hold.yaml \
-  --name mixture_trial --notes 'Test opposite component kicks'
-```
-
-Schema 3 distinguishes this model from the single-component package. Example
-scattering lengths are illustrative; choose your experimental values. A loaded
-state must name a `psi_XXXXXXXX.json` paired snapshot, not an individual NPY.
-
-## Layout and checks
-
-`gpe/core/` contains the reviewed physics unchanged. `stage.py`, `stage_factory.py`
-and `launch.py` carry both fields; `gpe/io/` saves pairs and component diagnostics.
-`config/` remains CPU-only. `gui_periphery/` preserves the editor and SSH controls.
-
-```sh
-python -m pip install -r requirements-dev.txt
 python -m pytest tests -q
-# On the target CUDA GPU, after installing the matching CuPy build:
-python -m unittest discover -s tests -p test_propagators.py -v
+python -m unittest discover -s tests -p test_propagators.py -v  # actual GPU checks
 ```
 
-CPU tests cannot establish A100 memory capacity or CUDA numerical correctness.
-The accepted imaginary-time method has first-order timestep bias; see the notes
-before interpreting its result as a stationary state.
+Local tests simulate Drive mounting and GPU launch controls. A real Colab/GPU
+launch, cloud persistence across runtime destruction, and 1024³ A100 memory use
+still require target-machine verification. No remote Git repository is configured.

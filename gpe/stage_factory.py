@@ -9,6 +9,7 @@ from config.yaml_parser import parse_yaml as read_config
 from .core.expressions import cuda_expression
 from .core.grids import get_grids
 from .stage import stage
+from .io.drive_storage import check_storage
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +27,8 @@ def make_stages(path):
 
     data_root = output_root(simulation["data_root"])
     monitor_root = output_root(simulation["monitor_root"])
+    check_storage(data_root)
+    check_storage(monitor_root)
     x, k = get_grids(simulation["N_grids"], simulation["simulation_range"])
     stages = []
     data_dirs, monitor_dirs = set(), set()

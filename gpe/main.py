@@ -1,6 +1,7 @@
 """Run an experiment: python -m gpe.main experiment.yaml"""
 
 import argparse
+import os
 
 
 def main():
@@ -24,6 +25,7 @@ def main():
         if exc.name == "cupy":
             parser.error("Simulation requires CuPy and a CUDA GPU. Install a matching cupy-cuda12x or cupy-cuda13x build; --check works without CuPy.")
         raise
+    os.environ.setdefault("GPE_DRIVE_MOUNT", "/content/drive")
     stages = make_stages(args.config)
     psi = None
     for current in stages:

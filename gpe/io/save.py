@@ -10,6 +10,7 @@ from .diagnostics import get_N, get_E, get_L, is_due, sum_abs2
 from .nk_extraction import nk_extraction
 from .state_io import save_wavefunctions
 from .atomic import atomic_npz
+from .drive_storage import check_storage
 
 
 def save_outputs(stage, step, *, initial=False, final=False):
@@ -61,6 +62,7 @@ def _save_component_outputs(stage, step, *, initial=False):
             stage.monitor_dir.mkdir(parents=True, exist_ok=True)
             path = stage.monitor_dir / "scalars.csv"
             new_file = not path.exists()
+            check_storage(path)
             with path.open("a", newline="") as file:
                 writer = csv.writer(file)
                 if new_file:

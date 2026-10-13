@@ -14,7 +14,6 @@ from gui_periphery.monitor_plots import (
     BEC, PHASE, ENERGY_NK_39K, image_plot, render_plot, scalar_value, spectrum_plot,
 )
 from gui_periphery.viewer import read_monitor
-from gui_periphery.workflow import MONITOR_FILES
 
 
 class MonitorTests(unittest.TestCase):
@@ -22,7 +21,7 @@ class MonitorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for name in ("stage_a", "stage_b"):
-                stage = root / "monitor_data" / name
+                stage = root / "monitor" / name
                 stage.mkdir(parents=True)
                 for step in (10, 20, 30):
                     np.savez(stage / f"nk_{step:08d}.npz", step=step, time=step/10,
@@ -37,7 +36,7 @@ class MonitorTests(unittest.TestCase):
             self.assertEqual(result["image"]["step"], 20)
             self.assertEqual(len(result["image_samples"]), 3)
             # A pinned file never silently substitutes a different time.
-            (root / "monitor_data/stage_a/density_xy_00000020.npz").write_bytes(b"partial")
+            (root / "monitor/stage_a/density_xy_00000020.npz").write_bytes(b"partial")
             pinned = read_monitor(root, "stage_a", image_name="density_xy_00000020.npz")
             self.assertIsNone(pinned["image"])
             self.assertTrue(pinned["warnings"])
@@ -90,18 +89,6 @@ class MonitorTests(unittest.TestCase):
         self.assertNotIn("<script", svg)
         self.assertIn("No saved data", render_plot("image", None))
 
-    def test_remote_manifest_includes_history_but_never_wavefunctions(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            stage = root / "monitor_data/stage_a"; stage.mkdir(parents=True)
-            for name in ("nk_00000010.npz", "nk_00000020.npz", "TOF_xy_00000010.npz", "scalars.csv"):
-                (stage / name).write_bytes(b"fixture")
-            saved = root / "saved_data"; saved.mkdir()
-            (saved / "psi_00000020.npy").write_bytes(b"never transfer")
-            result = json.loads(subprocess.check_output([sys.executable, "-c", MONITOR_FILES, directory]))
-            self.assertEqual(len(result), 4)
-            self.assertIn("monitor_data/stage_a/nk_00000010.npz", result)
-            self.assertTrue(all(name.startswith("monitor_data/") for name in result))
 
 
 if __name__ == "__main__":

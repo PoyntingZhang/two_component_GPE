@@ -71,7 +71,7 @@ function renderEvolution() {
     + section("Initial state", `<div class="form-grid">
     ${field("Start from", "initial_state.type", {options:[["gaussian","Generate a Gaussian"],["load","Load a saved pair"],["continue","Continue previous stage"]]})}
     ${initial === "gaussian" ? field("Component 1 width", "initial_state.sigma1", {unit:"σ₁",min:0}) + field("Component 2 width", "initial_state.sigma2", {unit:"σ₂",min:0}) : ""}
-    ${initial === "load" ? field("Snapshot pair manifest", "initial_state.path", {type:"text",unit:"on HPC",hint:"Path to the saved psi_XXXXXXXX.json file on the target machine."}) : ""}
+    ${initial === "load" ? field("Snapshot pair manifest", "initial_state.path", {type:"text",unit:"on Drive",hint:"Path to the saved psi_XXXXXXXX.json file on the target machine."}) : ""}
     </div>${initial === "continue" ? `<div class="hint">${selected === 0 ? "Stage 1 has no previous state. Choose a Gaussian or load a file." : "Use both final fields from the previous stage, with its remaining norm. No save or reload is needed."}</div>` : ""}`)
     + section("Cloud", `<div class="form-grid">
     ${field("Scattering length a₁₁", "cloud.a11", {unit:"a₀"})}
@@ -161,12 +161,12 @@ function outputFolder(s, index, useOverride = true) {
 }
 
 function renderOutputs() {
-  return section("Monitoring intervals", `<div class="interval-grid">${intervals.map(([name,key]) => field(name, "monitor."+key,{min:0,step:1})).join("")}</div>`, {description:"Completed steps within this stage. Set 0 to disable. On CSD3, diagnostics are written for a local viewer."})
+  return section("Monitoring intervals", `<div class="interval-grid">${intervals.map(([name,key]) => field(name, "monitor."+key,{min:0,step:1})).join("")}</div>`, {description:"Completed steps within this stage. Set 0 to disable. Both components write diagnostics directly to the run folder on Drive."})
     + section("Save intervals", `<div class="form-grid">
       ${field("Scalars", "save.scalar_interval",{min:0,step:1})}${field("Momentum profiles", "save.nk_interval",{min:0,step:1})}
       ${field("Wavefunction snapshots", "save.psi_interval",{min:0,step:1})}
       </div><div class="save-options">${check("Save initial state","save.save_initial")}${check("Save final state","save.save_final")}</div>`, {description:"Separate from monitoring. Set 0 to disable periodic saves."})
-    + section("Stage output", `<div class="form-grid">${field("Directory override", "save.directory", {type:"text",wide:true,hint:"Optional subfolder under both output roots. An absolute path overrides the wavefunction folder. Each run gets a new timestamped folder."})}</div><div class="hint" id="output-location"></div>`);
+    + section("Stage output", `<div class="form-grid">${field("Directory override", "save.directory", {type:"text",wide:true,hint:"Optional subfolder under both output roots. Prepared Colab runs require a relative subfolder. Each run gets a new timestamped folder."})}</div><div class="hint" id="output-location"></div>`);
 }
 
 function renderStageList() {

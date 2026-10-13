@@ -15,6 +15,7 @@ import webbrowser
 from config.expressions import preview_expression
 from gui_periphery.workflow import Workflow, archive_bundle
 from gui_periphery.viewer import read_monitor
+from gpe.io.drive_storage import require_drive_path
 
 try:
     from config.yaml_parser import ConfigError, dump_yaml, load_yaml, new_config, new_stage, save_yaml
@@ -47,8 +48,6 @@ class Handler(BaseHTTPRequestHandler):
         origin = self.headers.get("Origin")
         route = urlsplit(self.path).path
         token = self.headers.get("X-GPE-Session", "")
-        if route == "/api/ssh/askpass":
-            return self.headers.get("Host") in hosts
         if not self.server.colab and (self.headers.get("Host") not in hosts or
                 (origin is not None and origin not in {"http://" + host for host in hosts})):
             return False
@@ -64,7 +63,7 @@ class Handler(BaseHTTPRequestHandler):
         route = urlsplit(self.path).path
         if route == "/api/defaults":
             return self.reply({"config": new_config(), "stage": new_stage(),
-                               "save_path": str(Path.home() / "Downloads" / "experiment.yaml")})
+                               "save_path": str(Path(self.server.workflow.output_parent) / "experiment.yaml")})
         if route == "/api/example":
             return self.reply({"config": load_yaml((ROOT.parents[1] / "config" / "examples" / "kick_and_hold.yaml").read_text())})
         if route == "/api/workflow":
@@ -118,11 +117,6 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError("Request must be an object.")
             route = urlsplit(self.path).path
             workflow = self.server.workflow
-            if route == "/api/ssh/askpass":
-                return self.reply({"answer": workflow.connection.authenticate(self.headers.get("X-GPE-Auth"), data["prompt"])})
-            if route == "/api/ssh/answer":
-                workflow.connection.prompts.respond(data["id"], data["answer"])
-                return self.reply({"ok": True})
             if route == "/api/monitor":
                 folder = data.get("folder") or workflow.folder
                 if not folder:
@@ -136,9 +130,6 @@ class Handler(BaseHTTPRequestHandler):
             actions = {
                 "/api/run/prepare": ("Prepare run", lambda: workflow.prepare(data)),
                 "/api/run/open": ("Open run", lambda: workflow.open(data["folder"])),
-                "/api/ssh/connect": ("Start SSH", lambda: workflow.connection.start(data["host"], data["username"], data.get("port", 22))),
-                "/api/ssh/disconnect": ("Disconnect SSH", workflow.connection.disconnect),
-                "/api/run/upload": ("Upload run", lambda: workflow.upload(data["parent"])),
                 "/api/run/setup": ("Set up environment", workflow.setup),
                 "/api/run/submit": ("Launch simulation", workflow.submit),
                 "/api/run/refresh": ("Refresh job and monitor files", workflow.refresh),
@@ -158,7 +149,9 @@ class Handler(BaseHTTPRequestHandler):
             if route == "/api/save":
                 if type(data.get("overwrite", False)) is not bool:
                     raise ValueError("overwrite must be true or false.")
-                return self.reply({"path": save_yaml(data["config"], data["path"], data.get("overwrite", False))})
+                destination = require_drive_path(data["path"])
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                return self.reply({"path": save_yaml(data["config"], destination, data.get("overwrite", False))})
             self.reply({"error": "Not found."}, 404)
         except ConfigError as exc:
             self.reply({"errors": exc.errors}, 422)
@@ -168,11 +161,11 @@ class Handler(BaseHTTPRequestHandler):
             self.reply({"error": str(exc)}, 400)
 
 
-def create_server(port=8765, colab=False):
+def create_server(port=8765, colab=False, output_parent=None):
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     server.session_token = secrets.token_urlsafe(32)
     server.colab = colab
-    server.workflow = Workflow(f"http://127.0.0.1:{server.server_port}")
+    server.workflow = Workflow(f"http://127.0.0.1:{server.server_port}", output_parent=output_parent)
     return server
 
 
@@ -181,9 +174,10 @@ def main():
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--no-browser", action="store_true")
     parser.add_argument("--colab", action="store_true", help="Allow a token-protected Colab proxy; use gui_periphery.colab.show()")
+    parser.add_argument("--output-parent", help="Simulation parent folder on mounted Google Drive")
     args = parser.parse_args()
     try:
-        server = create_server(args.port, args.colab)
+        server = create_server(args.port, args.colab, args.output_parent)
     except OSError as exc:
         parser.exit(1, f"Could not start the editor: {exc}. Try --port 8766.\n")
     url = f"http://127.0.0.1:{server.server_port}/?token=" + server.session_token

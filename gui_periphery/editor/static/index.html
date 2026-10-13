@@ -15,7 +15,7 @@
   <header class="topbar">
     <a class="brand" href="#" aria-label="GPE experiment builder"><span class="brand-mark">ψ</span><span>Two-component GPE<span class="brand-sub">SIMULATION WORKSPACE</span></span></a>
     <div class="top-actions">
-      <span class="local-badge"><span></span> Local workspace</span>
+      <span class="local-badge"><span></span> Colab / Drive</span>
       <button id="new-config" class="quiet">New</button>
       <button id="import-config" class="secondary">Open YAML</button>
       <button id="save-config" class="primary" disabled>Save YAML <span aria-hidden="true">↗</span></button>
@@ -39,8 +39,8 @@
       <div class="global-title"><span class="section-number">01</span><div><h2>Simulation space</h2><p>Shared across all stages</p></div></div>
       <label class="field">Simulation range <span class="unit">dimensionless</span><input id="simulation-range" data-global="simulation_range" type="number" min="0" step="any"></label>
       <label class="field">Grid size <span class="unit">per axis</span><div class="input-suffix"><input id="grid-size" data-global="N_grids" type="number" min="2" step="1"><span>³</span></div></label>
-      <label class="field output-field">Wavefunction folder <span class="unit">on HPC</span><input id="data-root" data-global="data_root" type="text" spellcheck="false"></label>
-      <label class="field output-field">Monitoring folder <span class="unit">on HPC</span><input id="monitor-root" data-global="monitor_root" type="text" spellcheck="false"></label>
+      <label class="field output-field">Wavefunction folder <span class="unit">inside launch folder</span><input id="data-root" data-global="data_root" type="text" spellcheck="false"></label>
+      <label class="field output-field">Monitoring folder <span class="unit">inside launch folder</span><input id="monitor-root" data-global="monitor_root" type="text" spellcheck="false"></label>
     </section>
     <div class="workspace" id="workspace">
       <aside class="sequence-panel">
@@ -60,7 +60,7 @@
       </section>
       <aside class="yaml-panel" id="yaml-panel" hidden>
         <div class="yaml-heading"><h2>YAML preview</h2><button id="copy-yaml" class="quiet">Copy</button></div>
-        <p>The file your HPC runner will read.</p>
+        <p>The configuration captured for this run.</p>
         <textarea id="yaml-preview" aria-label="YAML preview" spellcheck="false" readonly></textarea>
       </aside>
     </div>
@@ -69,46 +69,24 @@
     <p class="scope-note">Your stage settings stay in YAML. Continue to Launch to choose the run name, environment and destination.</p>
     </div>
     <section id="view-launch" class="workflow-view" hidden>
-      <div class="intro"><div><div class="eyebrow">FROM CONFIGURATION TO COMPUTATION</div><h1>Give the run a home.</h1><p>Prepare, connect and launch here. The simulation uses the stages from Experiment.</p></div></div>
+      <div class="intro"><div><div class="eyebrow">COLAB · GOOGLE DRIVE</div><h1>Give the run a home.</h1><p>Each named run saves directly to your chosen Google Drive folder.</p></div></div>
       <div class="launch-grid">
         <section class="workflow-card">
-          <div class="card-heading"><span class="section-number">1</span><div><h2>Run &amp; destination</h2><p>A distinct folder for every launch</p></div></div>
+          <h2>Run &amp; destination</h2>
           <div class="form-grid">
-            <label class="field">Run folder name<input id="run-name" placeholder="simulation_rotation_test" spellcheck="false"><small>Leave blank for a timestamped name.</small></label>
-            <label class="field">Run on<select id="run-target"><option value="slurm">CSD3 / SSH + Slurm</option><option value="local">Machine running this GUI</option></select></label>
-            <p id="target-hint" class="hint span-all"></p>
-            <label class="field span-all">Purpose &amp; notes<textarea id="run-notes" rows="3" placeholder="This simulation studies… We save…"></textarea><small>Saved as notes.txt alongside the configuration.</small></label>
-            <label class="field span-all">Prepared runs folder<input id="run-output" placeholder="Default: runs/ in this repository" spellcheck="false"></label>
-          </div>
-          <details class="environment-settings" open><summary>Environment &amp; job settings</summary><div class="form-grid">
+            <label class="field span-all">Google Drive simulations folder<input id="run-output" spellcheck="false" placeholder="/content/drive/MyDrive/simulations"></label>
+            <label class="field span-all">Launch name<input id="run-name" spellcheck="false" placeholder="mixture_trial"><small>Creates a new subfolder. Leave blank for a timestamped name.</small></label>
+            <label class="field span-all">Purpose &amp; notes<textarea id="run-notes" rows="3" placeholder="What are you testing in this run?"></textarea><small>Saved in notes.txt beside the run configuration.</small></label>
             <label class="field">CUDA wheel<select id="run-cupy"><option value="cupy-cuda12x">CuPy for CUDA 12</option><option value="cupy-cuda13x">CuPy for CUDA 13</option></select></label>
-            <label class="field">Python for a new environment<input id="run-python" value="python3" spellcheck="false"></label>
-            <label class="field span-all">Cluster modules<input id="run-modules" placeholder="Python/module CUDA/module — leave blank on Colab" spellcheck="false"><small>Use the module names provided by your GPU environment.</small></label>
-            <label class="field hpc-setting">GPU project account<input id="run-account" placeholder="YOUR-PROJECT-GPU" spellcheck="false"></label>
-            <label class="field hpc-setting">Partition<input id="run-partition" value="ampere" spellcheck="false"></label>
-            <label class="field hpc-setting">Wall time<input id="run-walltime" value="01:00:00" placeholder="HH:MM:SS"></label>
-            <p class="hint hpc-setting">One GPU, one process. Your physics YAML controls simulation duration; wall time is the scheduler limit.</p>
-          </div></details>
-          <p id="prepare-summary" class="hint">The current Experiment draft will be copied into the run.</p>
-          <div class="button-row"><button id="prepare-run" class="primary">Prepare run</button><button id="download-run" class="secondary" disabled>Download bundle</button></div>
-          <details><summary>Reopen a prepared run</summary><label class="field">Simulation folder<input id="open-run-path" placeholder="/path/to/simulation_name" spellcheck="false"></label><button id="open-run" class="secondary">Open run</button></details>
+          </div>
+          <p id="prepare-summary" class="hint"></p><p id="storage-status" class="hint"></p>
+          <button id="prepare-run" class="primary">Prepare run on Drive</button>
+          <details><summary>Reopen a saved run</summary><label class="field">Launch folder on Drive<input id="open-run-path" placeholder="/content/drive/MyDrive/simulations/mixture_trial"></label><button id="open-run" class="secondary">Open run</button></details>
         </section>
-        <div class="workflow-stack">
-          <section class="workflow-card" id="connection-card">
-            <div class="card-heading"><span class="section-number">2</span><div><h2>Connect to HPC</h2><p id="connection-status">Disconnected</p></div></div>
-            <div class="form-grid"><label class="field">Host<input id="ssh-host" value="login-icelake.hpc.cam.ac.uk" spellcheck="false" autocomplete="off"></label><label class="field">Username<input id="ssh-user" autocomplete="username" spellcheck="false"></label><label class="field">Port<input id="ssh-port" type="number" min="1" max="65535" value="22"></label></div>
-            <div class="button-row"><button id="ssh-connect" class="primary">Connect</button><button id="ssh-disconnect" class="secondary">Disconnect</button></div>
-            <p class="hint">OpenSSH handles authentication and host verification. Passwords and one-time codes are not saved.</p>
-            <pre id="ssh-output" class="terminal" hidden></pre>
-            <form id="ssh-prompt" hidden autocomplete="off"><p id="ssh-prompt-text"></p><label class="field">SSH response<input id="ssh-answer" type="password" autocomplete="off" data-lpignore="true"></label><div class="button-row"><button type="submit" class="primary">Send response</button></div></form>
-          </section>
-          <section class="workflow-card">
-            <div class="card-heading"><span class="section-number">3</span><div><h2>Upload &amp; launch</h2><p id="launch-status">Prepare a run to begin.</p></div></div>
-            <div id="prepared-details" class="run-details"></div>
-            <label class="field hpc-setting">Remote parent folder<input id="remote-parent" placeholder="/rds/project/your_directory/simulations" spellcheck="false"><small>The named simulation folder will be created here.</small></label>
-            <div class="button-row"><button id="upload-run" class="secondary hpc-setting" disabled>Upload run</button><button id="setup-run" class="secondary" disabled>Set up environment</button><button id="submit-run" class="primary" disabled>Launch simulation</button></div>
-            <p id="environment-hint" class="hint">Environment setup installs this run's dependencies. Skip it when the chosen environment already has the required packages.</p>
-            <div class="button-row"><button id="go-monitor" class="text-button">Open monitor →</button><button id="cancel-run" class="quiet" disabled>Cancel job</button></div>
+        <div>
+          <section class="workflow-card"><h2>Launch</h2><p id="launch-status">Prepare a run to begin.</p><div id="prepared-details" class="run-details"></div>
+            <p class="hint">Uses this notebook's GPU runtime. Mount Drive and select a GPU before launching. Completed outputs remain on Drive; terminating the runtime stops computation.</p>
+            <div class="button-row"><button id="setup-run" class="secondary">Install CuPy if needed</button><button id="submit-run" class="primary">Launch simulation</button><button id="cancel-run" class="secondary">Stop simulation</button><button id="download-run" class="secondary">Download run setup</button><button id="go-monitor" class="secondary">Open monitor</button></div>
           </section>
           <section class="workflow-card"><h2 id="operation-name">Activity</h2><pre id="operation-output" class="terminal">No operation yet.</pre><p id="operation-error" class="inline-error" role="alert"></p></section>
         </div>
@@ -117,7 +95,7 @@
     <section id="view-monitor" class="workflow-view" hidden>
       <div class="intro"><div><div class="eyebrow">FOLLOW THE PHYSICS</div><h1>Watch it evolve.</h1><p>Raw saved diagnostics. Full wavefunctions stay on the simulation machine.</p></div><div class="button-row"><button id="refresh-monitor" class="primary">Refresh now</button><label class="check-line"><input id="auto-refresh" type="checkbox"> Auto refresh</label><label class="field">Every <span class="unit">seconds</span><input id="refresh-seconds" type="number" min="5" value="15"></label></div></div>
       <div class="workflow-card monitor-controls">
-        <label class="field">Stage<select id="monitor-stage"><option value="">Latest active stage</option></select></label>
+        <label class="field">Stage / component<select id="monitor-stage"><option value="">Latest active stage</option></select></label>
         <label class="field">Maximum k (μm⁻¹)<input id="k-max" type="number" min="0.01" step="any" placeholder="Full range"></label>
         <label class="field">Energy unit (nK)<input id="energy-unit" type="number" min="0" step="any" value="6.22486135015"><small>39K, length unit 1 μm. Change for another mass.</small></label>
       </div>
