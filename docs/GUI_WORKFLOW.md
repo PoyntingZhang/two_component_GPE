@@ -13,6 +13,17 @@ name, notes and runtime sources. Editing the draft does not change a prepared ru
 Use the `ssh` branch for cluster controls and `colab` for Drive-backed Colab runs.
 See that branch's README and notebook. The monitor stage menu includes component
 subfolders, so density, phase, spectra and scalar history stay component-resolved.
-The full wavefunctions are stored as paired snapshots; load their JSON manifest.
+Under Evolution, each component has its own initial-state choice: Gaussian,
+Load a saved wavefunction, or Continue previous stage. For a load, enter the
+absolute target path to the selected psi1_STEP.npy or psi2_STEP.npy. Its saved
+psi_STEP.json metadata and grid.npz must remain alongside it; no second path
+is needed for the metadata. The other component can use another file or source
+type. Both fields must match the simulation grid, and each destination reference
+atom number must match its selected source's reference population.
+
+Saved snapshots still contain both fields. Legacy pair-load YAMLs remain
+readable and expand into two component choices. Loading preserves each field's
+norm and phase; the new stage clock starts at zero. Prepare a new named run after
+changing these settings so the launch uses the new configuration.
 
 The only editable software target is this repository. GPE_simulator is read-only.

@@ -3,7 +3,7 @@ from .core.potentials import *
 from .core.helper import *
 from .core.make_propagator import *
 from .core.initial_states import gaussian
-from .io.state_io import load_wavefunctions
+from .io.state_io import inspect_wavefunction, read_wavefunction
 
 
 
@@ -76,17 +76,27 @@ class stage:
         self.propagator=None
 
     def _get_initial_state(self, previous_psi):
-        kind=self.initial_state["type"]
-        if kind=="continue":
-            if previous_psi is None:
-                raise ValueError("A continue stage needs the preceding stage's two wavefunctions.")
-            return previous_psi
-        if kind=="load":
-            return load_wavefunctions(self.initial_state["path"],self)
-        if kind=="gaussian":
-            return (gaussian(self.x_array,self.initial_state["sigma1"]),
-                    gaussian(self.x_array,self.initial_state["sigma2"]))
-        raise ValueError(f"Unknown initial state: {kind}")
+        sources = {}
+        # Check every requested input before allocating either new GPU field.
+        for i in (1, 2):
+            initial = self.initial_state[f"component{i}"]
+            if initial["type"] == "load":
+                sources[i] = inspect_wavefunction(initial["path"], self, i)
+            elif initial["type"] == "continue":
+                if previous_psi is None or previous_psi[i-1] is None:
+                    raise ValueError(f"Component {i} needs the preceding stage's wavefunction.")
+            elif initial["type"] != "gaussian":
+                raise ValueError(f"Unknown initial state: {initial['type']}")
+        fields = []
+        for i in (1, 2):
+            initial = self.initial_state[f"component{i}"]
+            if initial["type"] == "load":
+                fields.append(read_wavefunction(sources[i], self))
+            elif initial["type"] == "continue":
+                fields.append(previous_psi[i-1])
+            else:
+                fields.append(gaussian(self.x_array, initial["sigma"]))
+        return tuple(fields)
     def _get_box(self):
         if self.box_params["activate"]==False:
             return cp.zeros((self.N_grids,self.N_grids,self.N_grids),dtype=cp.float64)

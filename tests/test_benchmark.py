@@ -23,7 +23,8 @@ class BenchmarkTests(unittest.TestCase):
                               stage["potential1"]["static"]["enabled"],
                               stage["potential1"]["dynamic"]["enabled"],
                               stage["k_cut"]["enabled"]))
-            self.assertEqual(stage["initial_state"]["type"], "gaussian")
+            for initial in stage["initial_state"].values():
+                self.assertEqual(initial["type"], "gaussian")
             self.assertFalse(any(stage["monitor"].values()))
             self.assertFalse(any(stage["save"].values()))
             self.assertFalse(any(stage[key]["enabled"] for key in ("box", "noise", "absorber")))
@@ -55,7 +56,7 @@ class BenchmarkTests(unittest.TestCase):
 
     def test_repeats_reset_state_and_report_per_step_times(self):
         stage = SimpleNamespace(name="imaginary_none", N_grids=2, x_array=np.arange(2.),
-                                initial_state={"type": "gaussian", "sigma1": 10, "sigma2": 10})
+                                initial_state={f"component{i}": {"type": "gaussian", "sigma": 10} for i in (1, 2)})
         stage.prepare = lambda: [setattr(stage, key, np.ones((2, 2, 2), dtype=np.complex128)) for key in ("psi1", "psi2")]
         stage.release = Mock()
         calls = []

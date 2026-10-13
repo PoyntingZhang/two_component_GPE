@@ -110,15 +110,26 @@ import gpe.launch
         self.assertIn("Add at least one stage", (folder / "logs/run.log").read_text())
 
     def test_snapshot_reference_is_explicit_and_never_copied(self):
-        self.config["stages"][0]["initial_state"].update(type="load", path="previous/psi.npy")
+        self.config["stages"][0]["initial_state"]["component1"].update(type="load", path="previous/psi1_00000010.npy")
         self.write_config()
         with self.assertRaisesRegex(ValueError, "absolute target snapshot"):
             self.build()
-        folder = self.build(input_paths={1: "/rds/project/previous/psi.npy"})
+        folder = self.build(input_paths={(1, 1): "/rds/project/previous/psi1_00000010.npy"})
         initial = parse_yaml(folder / "config/run.yaml")["stages"][0]["initial_state"]
-        self.assertEqual(initial["path"], "/rds/project/previous/psi.npy")
+        self.assertEqual(initial["component1"]["path"], "/rds/project/previous/psi1_00000010.npy")
+        self.assertEqual(initial["component2"]["type"], "gaussian")
+        self.assertEqual(json.loads((folder / 'run.json').read_text())['external_snapshots'],
+                         ["/rds/project/previous/psi1_00000010.npy"])
         self.assertFalse(list(folder.rglob("*.npy")))
-        self.assertEqual(parse_yaml(self.path)["stages"][0]["initial_state"]["path"], "previous/psi.npy")
+        self.assertEqual(parse_yaml(self.path)["stages"][0]["initial_state"]["component1"]["path"], "previous/psi1_00000010.npy")
+
+    def test_legacy_pair_path_override_still_sets_both_components(self):
+        self.config["stages"][0]["initial_state"] = dict(type="load", path="previous/psi_00000010.json")
+        self.write_config()
+        folder = self.build(input_paths={1: "/Drive/previous/psi_00000010.json"})
+        initial = parse_yaml(folder / "config/run.yaml")["stages"][0]["initial_state"]
+        self.assertEqual(initial["component1"]["path"], "/Drive/previous/psi_00000010.json")
+        self.assertEqual(initial["component2"]["path"], initial["component1"]["path"])
 
     def test_run_outputs_cannot_escape_the_named_folder(self):
         with self.assertRaisesRegex(ValueError, "folder name"):

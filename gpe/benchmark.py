@@ -40,7 +40,8 @@ def benchmark_config(n, steps, dt):
         stage = new_stage(imaginary=evolution == "imaginary")
         stage["name"] = name
         stage["evolution"].update(type=evolution, steps=steps, dt=dt)
-        stage["initial_state"].update(type="gaussian", sigma1=10, sigma2=10)
+        for initial in stage["initial_state"].values():
+            initial.update(type="gaussian", sigma=10)
         stage["cloud"].update(a11=100, a22=80, a12=20, N1=150000, N2=100000)
         for group in ("box", "absorber", "noise"):
             stage[group]["enabled"] = False
@@ -88,8 +89,8 @@ def benchmark_stage(cp, stage, steps, warmup, repeats):
             # Regenerate outside the timer instead of keeping a full GPU backup.
             # Release the old state first; a 1024^3 complex128 array is 16 GiB.
             stage.psi1 = stage.psi2 = None
-            stage.psi1 = gaussian(stage.x_array, stage.initial_state["sigma1"])
-            stage.psi2 = gaussian(stage.x_array, stage.initial_state["sigma2"])
+            stage.psi1 = gaussian(stage.x_array, stage.initial_state["component1"]["sigma"])
+            stage.psi2 = gaussian(stage.x_array, stage.initial_state["component2"]["sigma"])
             wall_seconds, gpu_ms = measure(cp, lambda: launch_stage(stage))
             norms = []
             for psi in (stage.psi1, stage.psi2):

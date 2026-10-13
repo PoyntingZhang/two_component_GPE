@@ -136,6 +136,103 @@ class WorkflowTests(unittest.TestCase):
         self.assertFalse(path.exists())
         self.assertTrue((path.parent/'psi2_00000006.npy.partial').exists())
 
+    def test_independent_load_combines_different_runs_and_preserves_complex_values(self):
+        first = self.ready_stage()
+        first.N1, first.N2 = 100, 200
+        first_path = self.root/'first'/'psi_00000006.json'
+        self.io.save_wavefunctions(first_path, first, 6)
+        second = self.ready_stage()
+        second.N1, second.N2 = 300, 400
+        second.psi2 *= .17j  # Preserve both a different norm and phase.
+        second_path = self.root/'second'/'psi_00000010.json'
+        self.io.save_wavefunctions(second_path, second, 10)
+        # Neither unselected partner is required to read the selected fields.
+        (first_path.parent/'psi2_00000006.npy').unlink()
+        (second_path.parent/'psi1_00000010.npy').unlink()
+        c = self.config()
+        c['stages'][0]['cloud'].update(N1=100, N2=400)
+        initial = c['stages'][0]['initial_state']
+        initial['component1'].update(type='load', path='first/psi1_00000006.npy')
+        initial['component2'].update(type='load', path='second/psi2_00000010.npy')
+        item = self.parse(c)[0]
+        with patch.object(self.io, 'SLAB_SIZE', 3):
+            pair = item._get_initial_state(None)
+        np.testing.assert_array_equal(pair[0], first.psi1)
+        np.testing.assert_array_equal(pair[1], second.psi2)
+
+    def test_same_source_can_initialize_both_fields_without_shared_storage(self):
+        item = self.ready_stage()
+        item.N1, item.N2 = 123, 456
+        path = self.root/'source'/'psi_00000006.json'
+        self.io.save_wavefunctions(path, item, 6)
+        source = path.parent/'psi1_00000006.npy'
+        with self.assertRaisesRegex(ValueError, 'reference N2'):
+            self.io.load_wavefunction(source, item, 2)
+        item.N2 = 123
+        for initial in item.initial_state.values():
+            initial.update(type='load', path=str(source))
+        pair = item._get_initial_state(None)
+        np.testing.assert_array_equal(pair[0], item.psi1)
+        np.testing.assert_array_equal(pair[1], item.psi1)
+        self.assertFalse(np.shares_memory(*pair))
+        pair[1][0, 0, 0] = 42
+        self.assertNotEqual(pair[0][0, 0, 0], pair[1][0, 0, 0])
+
+    def test_mixed_load_gaussian_and_continue_keep_component_order(self):
+        item = self.ready_stage()
+        path = self.root/'source'/'psi_00000006.json'
+        self.io.save_wavefunctions(path, item, 6)
+        item.initial_state['component1'].update(type='load', path=str(path.parent/'psi1_00000006.npy'))
+        item.initial_state['component2'].update(type='gaussian', sigma=7)
+        generated = np.ones((4, 4, 4), dtype=complex)
+        with patch.object(self.stage_module, 'gaussian', return_value=generated) as gaussian:
+            pair = item._get_initial_state(None)
+        gaussian.assert_called_once_with(item.x_array, 7)
+        np.testing.assert_array_equal(pair[0], item.psi1)
+        self.assertIs(pair[1], generated)
+        item.initial_state['component2']['type'] = 'continue'
+        pair = item._get_initial_state((None, item.psi2))
+        np.testing.assert_array_equal(pair[0], item.psi1)
+        self.assertIs(pair[1], item.psi2)
+        with self.assertRaisesRegex(ValueError, 'Component 2'):
+            item._get_initial_state((None, None))
+
+    def test_independent_loader_rejects_uncommitted_grid_dtype_and_size_errors(self):
+        item = self.ready_stage()
+        path = self.root/'source'/'psi_00000006.json'
+        self.io.save_wavefunctions(path, item, 6)
+        source = path.parent/'psi2_00000006.npy'
+        metadata = path.read_text()
+        path.unlink()
+        with self.assertRaisesRegex(ValueError, 'metadata is missing'):
+            self.io.load_wavefunction(source, item, 2)
+        path.write_text(metadata)
+        np.savez(path.parent/'grid.npz', x_array=item.x_array + .1, k_array=item.k_array)
+        with self.assertRaisesRegex(ValueError, 'grid does not match'):
+            self.io.load_wavefunction(source, item, 2)
+        np.savez(path.parent/'grid.npz', x_array=item.x_array, k_array=item.k_array)
+        np.save(source, item.psi2.astype(np.complex64))
+        with self.assertRaisesRegex(ValueError, 'complex128'):
+            self.io.load_wavefunction(source, item, 2)
+        np.save(source, item.psi2)
+        source.write_bytes(source.read_bytes()[:-16])
+        for i in (1, 2):
+            item.initial_state[f'component{i}'].update(type='load', path=str(path.parent/f'psi{i}_00000006.npy'))
+        with patch.object(self.cp, 'empty') as allocate:
+            with self.assertRaisesRegex(ValueError, 'Incomplete'):
+                item._get_initial_state(None)
+        allocate.assert_not_called()
+
+    def test_legacy_pair_yaml_still_loads_each_corresponding_member(self):
+        item = self.ready_stage()
+        path = self.root/'source'/'psi_00000006.json'
+        self.io.save_wavefunctions(path, item, 6)
+        c = self.config()
+        c['stages'][0]['initial_state'] = dict(type='load', path=str(path))
+        restored = self.parse(c)[0]._get_initial_state(None)
+        np.testing.assert_array_equal(restored[0], item.psi1)
+        np.testing.assert_array_equal(restored[1], item.psi2)
+
     def test_continue_keeps_both_fields_and_component2_driving_reaches_loop(self):
         c=self.config();first=c['stages'][0];second=new_stage()
         second['potential2']['dynamic'].update(enabled=True,expression='t*x')

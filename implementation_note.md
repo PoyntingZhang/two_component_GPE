@@ -104,14 +104,31 @@ speedup because CuPy already caches plans.
 Use schema_version: 3. Reject single-component schema 2 instead of guessing a
 second component. `cloud` contains N1, N2, a11, a22, a12. `potential1` and
 `potential2` each contain static/dynamic enabled flags and expressions.
-`initial_state` has one pair-level type (gaussian/load/continue), sigma1, sigma2,
-and a path to a paired snapshot JSON manifest when loading.
+`initial_state.component1` and `initial_state.component2` each contain type
+(gaussian/load/continue), sigma and path. The GUI exposes separate choices and
+paths. Existing schema-3 pair-level type/sigma1/sigma2/path settings are converted
+on import; a legacy JSON path selects its corresponding component for each field.
+New exports use the component form. Older runners cannot read this extension.
 
 A saved pair consists of psi1_STEP.npy, psi2_STEP.npy, grid.npz and psi_STEP.json.
 The manifest is published last, after both slab-written fields are flushed and
 closed. A .partial file or fields without the manifest are not a completed pair.
-Loading validates both fields, grids and reference populations and preserves
-both norms. This starts a new stage; it is not an automatic restart of its clock.
+Independent loading takes a psi1_STEP.npy or psi2_STEP.npy path and automatically
+reads psi_STEP.json and grid.npz beside it. Keep these original names. The other
+NPY member is not read or required. Requiring the completed manifest retains
+grid/reference-population checks and prevents reuse of unfinished snapshots.
+Arbitrary NPY files without this metadata are not supported by this loader.
+
+The two inputs can come from different runs or steps, or one can be Gaussian
+or continued. This constructs a new initial condition, not necessarily a state
+that has evolved together. A source component can initialize either destination;
+the destination's reference N must equal that source component's saved reference
+N. Loading preserves complex amplitudes, phases and norms without normalization.
+The same file may initialize both components; they receive distinct GPU arrays.
+All selected files are checked before new fields are allocated. Transfers stay
+slab-wise, and the runner releases replaced components before loading their
+replacements. Continuation checks reference N only for the continued component.
+This starts a new stage; it is not an automatic restart of its clock.
 
 Each component has its own monitor subfolder. Scalar `norm`, `N_atoms`, `E_kin`
 and `Lz` retain the reference definitions for that component; E_kin is kinetic

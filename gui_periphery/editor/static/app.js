@@ -60,19 +60,24 @@ function section(title, content, {description = "", control = ""} = {}) {
   return `<section class="form-section"><div class="section-heading"><h3>${title}</h3>${control}</div>${description ? `<p>${description}</p>` : ""}${content}</section>`;
 }
 
+function initialEditor(component) {
+  const group = `initial_state.component${component}`, initial = stage().initial_state[`component${component}`];
+  return section(`Component ${component} · initial state`, `<div class="form-grid">
+    ${field("Start from", `${group}.type`, {options:[["gaussian","Generate a Gaussian"],["load","Load a saved wavefunction"],["continue","Continue previous stage"]]})}
+    ${initial.type === "gaussian" ? field("Gaussian width", `${group}.sigma`, {unit:`σ${component === 1 ? "₁" : "₂"}`,min:0}) : ""}
+    ${initial.type === "load" ? field("Wavefunction file", `${group}.path`, {type:"text",wide:true,hint:"Full target path to psi1_STEP.npy or psi2_STEP.npy. Keep its JSON metadata and grid.npz beside it. The other field is not loaded."}) : ""}
+    </div>${initial.type === "continue" ? `<div class="hint">${selected === 0 ? "Stage 1 has no previous state. Choose a Gaussian or load a file." : `Carry component ${component} forward with its remaining norm.`}</div>` : ""}`);
+}
+
 function renderEvolution() {
-  const s = stage(), initial = s.initial_state.type;
+  const s = stage();
   return section("Stage settings", `<div class="form-grid">
     ${field("Name", "name", {type:"text", hint:`Optional · defaults to Stage ${selected + 1}`})}
     ${field("Simulation type", "evolution.type", {options:[["imaginary","Imaginary time"],["real","Real time"]]})}
     ${field("Total steps", "evolution.steps", {min:1,step:1})}
     ${field("Step size", "evolution.dt", {min:0,unit:s.evolution.type === "imaginary" ? "Δτ" : "Δt"})}
     </div><div class="derived" id="duration">${s.evolution.type === "imaginary" ? "Imaginary" : "Real"} duration = ${fmt(s.evolution.steps * s.evolution.dt)}</div>`)
-    + section("Initial state", `<div class="form-grid">
-    ${field("Start from", "initial_state.type", {options:[["gaussian","Generate a Gaussian"],["load","Load a saved pair"],["continue","Continue previous stage"]]})}
-    ${initial === "gaussian" ? field("Component 1 width", "initial_state.sigma1", {unit:"σ₁",min:0}) + field("Component 2 width", "initial_state.sigma2", {unit:"σ₂",min:0}) : ""}
-    ${initial === "load" ? field("Snapshot pair manifest", "initial_state.path", {type:"text",unit:"on HPC",hint:"Path to the saved psi_XXXXXXXX.json file on the target machine."}) : ""}
-    </div>${initial === "continue" ? `<div class="hint">${selected === 0 ? "Stage 1 has no previous state. Choose a Gaussian or load a file." : "Use both final fields from the previous stage, with its remaining norm. No save or reload is needed."}</div>` : ""}`)
+    + initialEditor(1) + initialEditor(2)
     + section("Cloud", `<div class="form-grid">
     ${field("Scattering length a₁₁", "cloud.a11", {unit:"a₀"})}
     ${field("Scattering length a₂₂", "cloud.a22", {unit:"a₀"})}
@@ -172,7 +177,7 @@ function renderOutputs() {
 function renderStageList() {
   $("#stage-count").textContent = config.stages.length;
   $("#stage-list").innerHTML = config.stages.map((s,i) => `<button class="stage-item ${i === selected ? "active" : ""}" data-stage="${i}" ${i === selected ? 'aria-current="step"' : ""}>
-    <span class="stage-index">${String(i+1).padStart(2,"0")}</span><span><strong>${escapeHTML(stageName(s,i))}</strong><small>${s.evolution.type === "imaginary" ? "Imaginary time" : "Real time"}</small><span class="stage-line">${fmt(s.evolution.steps)} steps · ${s.initial_state.type === "continue" ? "continue ψ" : s.initial_state.type === "load" ? "load ψ" : "Gaussian"}</span></span></button>`).join("");
+    <span class="stage-index">${String(i+1).padStart(2,"0")}</span><span><strong>${escapeHTML(stageName(s,i))}</strong><small>${s.evolution.type === "imaginary" ? "Imaginary time" : "Real time"}</small><span class="stage-line">${fmt(s.evolution.steps)} steps · ${[1,2].map(c=>`ψ${c}: ${{continue:"continue",load:"load",gaussian:"Gaussian"}[s.initial_state[`component${c}`].type]}`).join(" · ")}</span></span></button>`).join("");
   $("#stage-number").textContent = "STAGE " + String(selected+1).padStart(2,"0");
   $("#stage-heading").textContent = stageName(stage(),selected);
   $("#total-steps").textContent = fmt(config.stages.reduce((n,s)=>n+(Number(s.evolution.steps)||0),0));

@@ -22,17 +22,18 @@ class ConfigurationTests(unittest.TestCase):
 
     def test_first_stage_cannot_continue(self):
         config = new_config()
-        config["stages"][0]["initial_state"]["type"] = "continue"
+        config["stages"][0]["initial_state"]["component2"]["type"] = "continue"
         with self.assertRaises(ConfigError) as result:
             normalize_config(config)
-        self.assertEqual(result.exception.errors[0]["path"], "stages.0.initial_state.type")
+        self.assertEqual(result.exception.errors[0]["path"], "stages.0.initial_state.component2.type")
 
     def test_reordering_requires_an_initial_state_at_the_front(self):
         config = new_config()
         config["stages"].insert(0, new_stage())
         with self.assertRaises(ConfigError):
             dump_yaml(config)
-        config["stages"][0]["initial_state"].update(type="load", path="/rds/project/state.npy")
+        for initial in config["stages"][0]["initial_state"].values():
+            initial.update(type="load", path="/rds/project/psi_00001000.json")
         self.assertEqual(load_yaml(dump_yaml(config)), config)
 
     def test_noise_tracks_stage_depth_without_changing_seed(self):
@@ -65,19 +66,19 @@ class ConfigurationTests(unittest.TestCase):
         config["stages"].append(second)
         with self.assertRaisesRegex(ConfigError, "reference N1"):
             normalize_config(config)
-        second["initial_state"]["type"] = "gaussian"
+        second["initial_state"]["component1"]["type"] = "gaussian"
         normalize_config(config)  # A newly generated cloud can use a new reference.
 
     def test_missing_load_path_and_invalid_numbers(self):
         config = new_config()
-        config["stages"][0]["initial_state"]["type"] = "load"
+        config["stages"][0]["initial_state"]["component1"]["type"] = "load"
         config["stages"][0]["evolution"]["steps"] = 1.5
         config["simulation"]["N_grids"] = True
         config["stages"][0]["evolution"]["dt"] = float("nan")
         with self.assertRaises(ConfigError) as result:
             normalize_config(config)
         paths = {item["path"] for item in result.exception.errors}
-        self.assertTrue({"stages.0.initial_state.path", "stages.0.evolution.steps",
+        self.assertTrue({"stages.0.initial_state.component1.path", "stages.0.evolution.steps",
                          "simulation.N_grids", "stages.0.evolution.dt"} <= paths)
 
     def test_time_dependence_requires_real_evolution(self):
@@ -179,6 +180,33 @@ class ConfigurationTests(unittest.TestCase):
         self.assertEqual(len(config["stages"]), 3)
         self.assertEqual(load_yaml(dump_yaml(config)), config)
         self.assertEqual(config["stages"][1]["potential1"]["static"]["expression"], "0.24*y")
+
+    def test_independent_initial_states_roundtrip_and_validate_each_population(self):
+        config = new_config()
+        first = config["stages"][0]["initial_state"]
+        first["component1"].update(type="load", path="/Drive/prepared/psi2_00000010.npy")
+        first["component2"].update(type="gaussian", sigma=7)
+        second = new_stage()
+        second["initial_state"]["component1"].update(type="load", path="/Drive/other/psi1_00000020.npy")
+        second["cloud"]["N1"] += 100
+        config["stages"].append(second)
+        self.assertEqual(load_yaml(dump_yaml(config)), config)
+        second["cloud"]["N2"] += 1
+        with self.assertRaisesRegex(ConfigError, "reference N2"):
+            normalize_config(config)
+
+    def test_legacy_pair_initial_states_migrate_without_changing_sources(self):
+        config = new_config()
+        for kind in ("gaussian", "load"):
+            config["stages"][0]["initial_state"] = dict(type=kind, sigma1=2, sigma2=5,
+                                                       path="/Drive/psi_00000010.json")
+            initial = normalize_config(config)["stages"][0]["initial_state"]
+            for i, sigma in ((1, 2), (2, 5)):
+                self.assertEqual(initial[f"component{i}"], dict(type=kind, sigma=sigma,
+                                                                path="/Drive/psi_00000010.json"))
+        config["stages"][0]["initial_state"]["component1"] = dict(type="load", path="different.npy")
+        with self.assertRaisesRegex(ConfigError, "Do not mix"):
+            normalize_config(config)
 
 
 if __name__ == "__main__":

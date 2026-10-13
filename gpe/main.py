@@ -28,8 +28,10 @@ def main():
     psi = None
     for current in stages:
         print(f"Starting {current.name} ({current.type}, {current.steps} steps)", flush=True)
-        if current.initial_state["type"] != "continue":
-            psi = None
+        if psi is not None:
+            # Release replaced components before allocating their new fields.
+            psi = tuple(value if current.initial_state[f"component{i}"]["type"] == "continue" else None
+                        for i, value in enumerate(psi, 1))
         current.prepare(psi)
         psi = None  # Do not retain the first step's input throughout the whole stage.
         psi = launch_stage(current)

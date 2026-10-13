@@ -31,7 +31,8 @@ def new_stage(imaginary=False):
     return {
         "name": "",
         "evolution": {"type": "imaginary" if imaginary else "real", "steps": 2000, "dt": cfg["dt"]},
-        "initial_state": {"type": "gaussian" if imaginary else "continue", "sigma1": 3.0, "sigma2": 3.0, "path": ""},
+        "initial_state": {f"component{i}": {"type": "gaussian" if imaginary else "continue",
+                                             "sigma": 3.0, "path": ""} for i in (1, 2)},
         "potential1": {
             "static": {"enabled": False, "expression": "0"},
             "dynamic": {"enabled": False, "expression": "0"},
@@ -144,6 +145,16 @@ def normalize_config(raw):
     config["stages"] = []
     for index, raw_stage in enumerate(stages):
         path = f"stages.{index}"
+        # Import the original pair-level schema-3 settings without changing their meaning.
+        if isinstance(raw_stage, dict):
+            old = raw_stage.get("initial_state")
+            if isinstance(old, dict) and any(key in old for key in ("type", "sigma1", "sigma2", "path")):
+                if any(key not in {"type", "sigma1", "sigma2", "path"} for key in old):
+                    error(f"{path}.initial_state", "Do not mix pair-level and component initial-state settings or use unknown fields.")
+                raw_stage["initial_state"] = {
+                    f"component{i}": {"type": old.get("type", "gaussian" if index == 0 else "continue"),
+                                       "sigma": old.get(f"sigma{i}", 3.0), "path": old.get("path", "")}
+                    for i in (1, 2)}
         # The old checkpoint field never had restart support. Import it as a snapshot cadence.
         if isinstance(raw_stage, dict) and isinstance(raw_stage.get("save"), dict):
             old_save = raw_stage["save"]
@@ -161,12 +172,17 @@ def normalize_config(raw):
         number(evo, "steps", f"{path}.evolution", positive=True, integer=True)
         number(evo, "dt", f"{path}.evolution", positive=True)
         initial = stage["initial_state"]
-        choice(initial, "type", f"{path}.initial_state", ("gaussian", "load", "continue"))
-        text(initial, "path", f"{path}.initial_state", required=initial["type"] == "load")
-        for key in ("sigma1", "sigma2"):
-            number(initial, key, f"{path}.initial_state", positive=True)
-        if index == 0 and initial["type"] == "continue":
-            error(f"{path}.initial_state.type", "Stage 1 needs a Gaussian or a loaded state; there is no previous stage.")
+        for i in (1, 2):
+            component = initial[f"component{i}"]
+            component_path = f"{path}.initial_state.component{i}"
+            choice(component, "type", component_path, ("gaussian", "load", "continue"))
+            text(component, "path", component_path, required=component["type"] == "load")
+            number(component, "sigma", component_path, positive=True)
+            if component["type"] == "load" and isinstance(component["path"], str) and component["path"].strip():
+                if Path(component["path"]).suffix not in (".npy", ".json"):
+                    error(f"{component_path}.path", "Choose a saved .npy wavefunction or a legacy .json pair manifest.")
+            if index == 0 and component["type"] == "continue":
+                error(f"{component_path}.type", f"Component {i} in stage 1 needs a Gaussian or a loaded state; there is no previous stage.")
         for group in ("potential1", "potential2"):
             potential = stage[group]
             for kind in ("static", "dynamic"):
@@ -209,7 +225,7 @@ def normalize_config(raw):
             number(stage["cloud"], key, f"{path}.cloud")
         for key in ("N1", "N2"):
             number(stage["cloud"], key, f"{path}.cloud", positive=True, integer=True)
-            if index > 0 and initial["type"] == "continue" and stage["cloud"][key] != config["stages"][index - 1]["cloud"][key]:
+            if index > 0 and initial[f"component{key[1:]}"]["type"] == "continue" and stage["cloud"][key] != config["stages"][index - 1]["cloud"][key]:
                 error(f"{path}.cloud.{key}", f"A continued state must keep the previous stage's reference {key}. Change scattering lengths to adjust interactions.")
         for key in MONITOR_FIELDS:
             number(stage["monitor"], key, f"{path}.monitor", minimum=0, integer=True)
