@@ -1,0 +1,143 @@
+# Workflow smoke test only: these short stages do not prepare a converged ground state.
+# 32^3 grid; five snapshot pairs occupy about 5 MiB, plus small diagnostics.
+# Two-component GPE experiment configuration — schema 3
+# Double precision. Lengths and times are dimensionless; a11, a22, a12 are in Bohr radii.
+# Every stage starts at t = 0. Intervals count completed steps; 0 disables.
+# Gaussian disorder covers the whole grid. Potential expressions use Python syntax.
+schema_version: 3
+simulation:
+  simulation_range: 16
+  N_grids: 32
+  data_root: data
+  monitor_root: monitor
+stages:
+- name: Preparation_smoke
+  evolution:
+    type: imaginary
+    steps: 10
+    dt: 0.001
+  initial_state:
+    type: gaussian
+    sigma1: 1.5
+    sigma2: 2.0
+    path: ''
+  potential1:
+    static:
+      enabled: true
+      expression: 0.01*(x*x+y*y+z*z)
+    dynamic:
+      enabled: false
+      expression: '0'
+  potential2:
+    static:
+      enabled: true
+      expression: 0.015*(x*x+y*y+z*z)
+    dynamic:
+      enabled: false
+      expression: '0'
+  k_cut:
+    enabled: false
+    value: 0.0
+  box:
+    enabled: false
+    R: 25
+    L: 50
+    trap_depth: 49
+    wall_thickness: 2
+  absorber:
+    enabled: false
+    activation_distance: 5
+    strength: 100
+  noise:
+    enabled: false
+    fraction_of_trap_depth: 0.01
+    seed: 42
+    correlation_length: 0.0
+  cloud:
+    a11: 20
+    a22: 25
+    a12: 10
+    N1: 200
+    N2: 300
+  monitor:
+    print_scalar_interval: 5
+    show_nk_interval: 5
+    show_TOF_image_interval: 5
+    show_verticle_TOF_interval: 0
+    show_TOF_slice_interval: 0
+    show_verticle_TOF_slice_interval: 0
+    show_magnifier_interval: 5
+    show_magnifier_slice_interval: 0
+    show_phase_interval: 5
+  save:
+    directory: ''
+    scalar_interval: 5
+    nk_interval: 5
+    psi_interval: 10
+    save_initial: true
+    save_final: true
+- name: Driven_smoke
+  evolution:
+    type: real
+    steps: 20
+    dt: 0.001
+  initial_state:
+    type: continue
+    sigma1: 1.5
+    sigma2: 2.0
+    path: ''
+  potential1:
+    static:
+      enabled: true
+      expression: 0.01*(x*x+y*y+z*z)
+    dynamic:
+      enabled: false
+      expression: '0'
+  potential2:
+    static:
+      enabled: true
+      expression: 0.015*(x*x+y*y+z*z)
+    dynamic:
+      enabled: true
+      expression: 0.02*cos(t)*y
+  k_cut:
+    enabled: false
+    value: 0.0
+  box:
+    enabled: false
+    R: 25
+    L: 50
+    trap_depth: 49
+    wall_thickness: 2
+  absorber:
+    enabled: false
+    activation_distance: 5
+    strength: 100
+  noise:
+    enabled: false
+    fraction_of_trap_depth: 0.01
+    seed: 42
+    correlation_length: 0.0
+  cloud:
+    a11: 20
+    a22: 25
+    a12: 10
+    N1: 200
+    N2: 300
+  monitor:
+    print_scalar_interval: 5
+    show_nk_interval: 5
+    show_TOF_image_interval: 5
+    show_verticle_TOF_interval: 0
+    show_TOF_slice_interval: 0
+    show_verticle_TOF_slice_interval: 0
+    show_magnifier_interval: 5
+    show_magnifier_slice_interval: 0
+    show_phase_interval: 5
+  save:
+    directory: ''
+    scalar_interval: 5
+    nk_interval: 5
+    psi_interval: 10
+    save_initial: true
+    save_final: true
