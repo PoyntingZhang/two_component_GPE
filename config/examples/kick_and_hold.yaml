@@ -1,0 +1,206 @@
+# Two-component GPE experiment configuration — schema 3
+# Double precision. Lengths and times are dimensionless; a11, a22, a12 are in Bohr radii.
+# Every stage starts at t = 0. Intervals count completed steps; 0 disables.
+# Gaussian disorder covers the whole grid. Potential expressions use Python syntax.
+schema_version: 3
+simulation:
+  simulation_range: 70
+  N_grids: 64
+  data_root: data
+  monitor_root: monitor
+stages:
+- name: Preparation
+  evolution:
+    type: imaginary
+    steps: 100
+    dt: 0.002
+  initial_state:
+    type: gaussian
+    sigma1: 3.0
+    sigma2: 3.0
+    path: ''
+  potential1:
+    static:
+      enabled: false
+      expression: '0'
+    dynamic:
+      enabled: false
+      expression: '0'
+  potential2:
+    static:
+      enabled: false
+      expression: '0'
+    dynamic:
+      enabled: false
+      expression: '0'
+  k_cut:
+    enabled: false
+    value: 0.0
+  box:
+    enabled: true
+    R: 25
+    L: 50
+    trap_depth: 49
+    wall_thickness: 2
+  absorber:
+    enabled: false
+    activation_distance: 5
+    strength: 100
+  noise:
+    enabled: false
+    fraction_of_trap_depth: 0.01
+    seed: 42
+    correlation_length: 0.0
+  cloud:
+    a11: 100
+    a22: 100
+    a12: 0.0
+    N1: 150000
+    N2: 150000
+  monitor:
+    print_scalar_interval: 1000
+    show_nk_interval: 0
+    show_TOF_image_interval: 0
+    show_verticle_TOF_interval: 0
+    show_TOF_slice_interval: 0
+    show_verticle_TOF_slice_interval: 0
+    show_magnifier_interval: 0
+    show_magnifier_slice_interval: 0
+    show_phase_interval: 0
+  save:
+    directory: ''
+    scalar_interval: 1000
+    nk_interval: 0
+    psi_interval: 0
+    save_initial: false
+    save_final: true
+- name: Kick
+  evolution:
+    type: real
+    steps: 100
+    dt: 0.002
+  initial_state:
+    type: continue
+    sigma1: 3.0
+    sigma2: 3.0
+    path: ''
+  potential1:
+    static:
+      enabled: true
+      expression: 0.24*y
+    dynamic:
+      enabled: false
+      expression: '0'
+  potential2:
+    static:
+      enabled: true
+      expression: -0.24*y
+    dynamic:
+      enabled: false
+      expression: '0'
+  k_cut:
+    enabled: false
+    value: 0.0
+  box:
+    enabled: true
+    R: 25
+    L: 50
+    trap_depth: 49
+    wall_thickness: 2
+  absorber:
+    enabled: true
+    activation_distance: 5
+    strength: 100
+  noise:
+    enabled: false
+    fraction_of_trap_depth: 0.01
+    seed: 42
+    correlation_length: 0.0
+  cloud:
+    a11: 100
+    a22: 100
+    a12: 0.0
+    N1: 150000
+    N2: 150000
+  monitor:
+    print_scalar_interval: 1000
+    show_nk_interval: 0
+    show_TOF_image_interval: 0
+    show_verticle_TOF_interval: 0
+    show_TOF_slice_interval: 0
+    show_verticle_TOF_slice_interval: 0
+    show_magnifier_interval: 0
+    show_magnifier_slice_interval: 0
+    show_phase_interval: 0
+  save:
+    directory: ''
+    scalar_interval: 1000
+    nk_interval: 0
+    psi_interval: 0
+    save_initial: false
+    save_final: true
+- name: Hold
+  evolution:
+    type: real
+    steps: 100
+    dt: 0.002
+  initial_state:
+    type: continue
+    sigma1: 3.0
+    sigma2: 3.0
+    path: ''
+  potential1:
+    static:
+      enabled: false
+      expression: '0'
+    dynamic:
+      enabled: false
+      expression: '0'
+  potential2:
+    static:
+      enabled: false
+      expression: '0'
+    dynamic:
+      enabled: false
+      expression: '0'
+  k_cut:
+    enabled: false
+    value: 0.0
+  box:
+    enabled: true
+    R: 25
+    L: 50
+    trap_depth: 49
+    wall_thickness: 2
+  absorber:
+    enabled: true
+    activation_distance: 5
+    strength: 100
+  noise:
+    enabled: false
+    fraction_of_trap_depth: 0.01
+    seed: 42
+    correlation_length: 0.0
+  cloud:
+    a11: 100
+    a22: 100
+    a12: 0.0
+    N1: 150000
+    N2: 150000
+  monitor:
+    print_scalar_interval: 1000
+    show_nk_interval: 0
+    show_TOF_image_interval: 0
+    show_verticle_TOF_interval: 0
+    show_TOF_slice_interval: 0
+    show_verticle_TOF_slice_interval: 0
+    show_magnifier_interval: 0
+    show_magnifier_slice_interval: 0
+    show_phase_interval: 0
+  save:
+    directory: ''
+    scalar_interval: 1000
+    nk_interval: 0
+    psi_interval: 0
+    save_initial: false
+    save_final: true

@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Two-component GPE · Simulation workspace</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="workflow.css">
+  <!-- SESSION -->
+  <script src="app.js" defer></script>
+  <script src="monitor.js" defer></script>
+  <script src="workflow.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="GPE experiment builder"><span class="brand-mark">ψ</span><span>Two-component GPE<span class="brand-sub">SIMULATION WORKSPACE</span></span></a>
+    <div class="top-actions">
+      <span class="local-badge"><span></span> Local workspace</span>
+      <button id="new-config" class="quiet">New</button>
+      <button id="import-config" class="secondary">Open YAML</button>
+      <button id="save-config" class="primary" disabled>Save YAML <span aria-hidden="true">↗</span></button>
+      <input id="import-file" type="file" accept=".yaml,.yml,text/yaml,application/yaml" hidden>
+    </div>
+  </header>
+  <main>
+    <nav class="workflow-nav" aria-label="Simulation workflow">
+      <button class="active" data-view="experiment" aria-current="page"><span>01</span> Experiment</button>
+      <button data-view="launch"><span>02</span> Launch</button>
+      <button data-view="monitor"><span>03</span> Monitor</button>
+      <span id="job-badge">No run prepared</span>
+    </nav>
+    <div id="workflow-notice" class="notice" role="status" hidden></div>
+    <div id="view-experiment" class="workflow-view">
+    <section class="intro">
+      <div><div class="eyebrow">SET UP YOUR NEXT RUN</div><h1>Build the sequence.</h1><p>Define the stages, then prepare and launch the run from this workspace.</p></div>
+    </section>
+    <div id="notice" class="notice" role="status" hidden></div>
+    <section class="global-card" aria-label="Overall parameters">
+      <div class="global-title"><span class="section-number">01</span><div><h2>Simulation space</h2><p>Shared across all stages</p></div></div>
+      <label class="field">Simulation range <span class="unit">dimensionless</span><input id="simulation-range" data-global="simulation_range" type="number" min="0" step="any"></label>
+      <label class="field">Grid size <span class="unit">per axis</span><div class="input-suffix"><input id="grid-size" data-global="N_grids" type="number" min="2" step="1"><span>³</span></div></label>
+      <label class="field output-field">Wavefunction folder <span class="unit">on HPC</span><input id="data-root" data-global="data_root" type="text" spellcheck="false"></label>
+      <label class="field output-field">Monitoring folder <span class="unit">on HPC</span><input id="monitor-root" data-global="monitor_root" type="text" spellcheck="false"></label>
+    </section>
+    <div class="workspace" id="workspace">
+      <aside class="sequence-panel">
+        <div class="rail-heading"><h2>Stages <span id="stage-count" class="count">1</span></h2><span class="flow-label">IN ORDER</span></div>
+        <nav id="stage-list" aria-label="Simulation stages"></nav>
+        <button id="add-stage" class="add-stage"><span aria-hidden="true">＋</span> Add stage</button>
+        <div class="sequence-summary"><div class="eyebrow">SEQUENCE OVERVIEW</div><dl><div><dt>Total steps</dt><dd id="total-steps">—</dd></div><div><dt>Real time</dt><dd id="real-time">—</dd></div><div><dt>Grid spacing</dt><dd id="grid-spacing">—</dd></div><div><dt>Two ψ arrays</dt><dd id="state-memory">—</dd></div></dl><p>Double precision throughout. Memory shown is for both fields only; potentials, FFT workspace and diagnostics need more.</p></div>
+      </aside>
+      <section class="stage-panel" aria-label="Stage settings">
+        <div class="stage-heading"><div><div class="eyebrow" id="stage-number">STAGE 01</div><h2 id="stage-heading">Preparation</h2></div><div id="stage-tools" class="stage-tools"></div></div>
+        <div class="tabs" role="tablist" aria-label="Stage sections">
+          <button class="tab active" role="tab" aria-selected="true" data-tab="evolution">Evolution</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="potentials">Potentials</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="outputs">Monitor &amp; save</button>
+        </div>
+        <div id="editor" class="editor" role="tabpanel"></div>
+      </section>
+      <aside class="yaml-panel" id="yaml-panel" hidden>
+        <div class="yaml-heading"><h2>YAML preview</h2><button id="copy-yaml" class="quiet">Copy</button></div>
+        <p>The file your HPC runner will read.</p>
+        <textarea id="yaml-preview" aria-label="YAML preview" spellcheck="false" readonly></textarea>
+      </aside>
+    </div>
+    <section id="validation" class="validation" aria-label="Configuration issues" hidden></section>
+    <footer><div class="status"><span id="status-dot"></span><span id="validation-status">Loading configuration…</span></div><button id="toggle-preview" class="text-button" aria-expanded="false">Show YAML preview <span aria-hidden="true">{ }</span></button></footer>
+    <p class="scope-note">Your stage settings stay in YAML. Continue to Launch to choose the run name, environment and destination.</p>
+    </div>
+    <section id="view-launch" class="workflow-view" hidden>
+      <div class="intro"><div><div class="eyebrow">FROM CONFIGURATION TO COMPUTATION</div><h1>Give the run a home.</h1><p>Prepare, connect and launch here. The simulation uses the stages from Experiment.</p></div></div>
+      <div class="launch-grid">
+        <section class="workflow-card">
+          <div class="card-heading"><span class="section-number">1</span><div><h2>Run &amp; destination</h2><p>A distinct folder for every launch</p></div></div>
+          <div class="form-grid">
+            <label class="field">Run folder name<input id="run-name" placeholder="simulation_rotation_test" spellcheck="false"><small>Leave blank for a timestamped name.</small></label>
+            <label class="field">Run on<select id="run-target"><option value="slurm">CSD3 / SSH + Slurm</option><option value="local">Machine running this GUI</option></select></label>
+            <p id="target-hint" class="hint span-all"></p>
+            <label class="field span-all">Purpose &amp; notes<textarea id="run-notes" rows="3" placeholder="This simulation studies… We save…"></textarea><small>Saved as notes.txt alongside the configuration.</small></label>
+            <label class="field span-all">Prepared runs folder<input id="run-output" placeholder="Default: runs/ in this repository" spellcheck="false"></label>
+          </div>
+          <details class="environment-settings" open><summary>Environment &amp; job settings</summary><div class="form-grid">
+            <label class="field">CUDA wheel<select id="run-cupy"><option value="cupy-cuda12x">CuPy for CUDA 12</option><option value="cupy-cuda13x">CuPy for CUDA 13</option></select></label>
+            <label class="field">Python for a new environment<input id="run-python" value="python3" spellcheck="false"></label>
+            <label class="field span-all">Cluster modules<input id="run-modules" placeholder="Python/module CUDA/module — leave blank on Colab" spellcheck="false"><small>Use the module names provided by your GPU environment.</small></label>
+            <label class="field hpc-setting">GPU project account<input id="run-account" placeholder="YOUR-PROJECT-GPU" spellcheck="false"></label>
+            <label class="field hpc-setting">Partition<input id="run-partition" value="ampere" spellcheck="false"></label>
+            <label class="field hpc-setting">Wall time<input id="run-walltime" value="01:00:00" placeholder="HH:MM:SS"></label>
+            <p class="hint hpc-setting">One GPU, one process. Your physics YAML controls simulation duration; wall time is the scheduler limit.</p>
+          </div></details>
+          <p id="prepare-summary" class="hint">The current Experiment draft will be copied into the run.</p>
+          <div class="button-row"><button id="prepare-run" class="primary">Prepare run</button><button id="download-run" class="secondary" disabled>Download bundle</button></div>
+          <details><summary>Reopen a prepared run</summary><label class="field">Simulation folder<input id="open-run-path" placeholder="/path/to/simulation_name" spellcheck="false"></label><button id="open-run" class="secondary">Open run</button></details>
+        </section>
+        <div class="workflow-stack">
+          <section class="workflow-card" id="connection-card">
+            <div class="card-heading"><span class="section-number">2</span><div><h2>Connect to HPC</h2><p id="connection-status">Disconnected</p></div></div>
+            <div class="form-grid"><label class="field">Host<input id="ssh-host" value="login-icelake.hpc.cam.ac.uk" spellcheck="false" autocomplete="off"></label><label class="field">Username<input id="ssh-user" autocomplete="username" spellcheck="false"></label><label class="field">Port<input id="ssh-port" type="number" min="1" max="65535" value="22"></label></div>
+            <div class="button-row"><button id="ssh-connect" class="primary">Connect</button><button id="ssh-disconnect" class="secondary">Disconnect</button></div>
+            <p class="hint">OpenSSH handles authentication and host verification. Passwords and one-time codes are not saved.</p>
+            <pre id="ssh-output" class="terminal" hidden></pre>
+            <form id="ssh-prompt" hidden autocomplete="off"><p id="ssh-prompt-text"></p><label class="field">SSH response<input id="ssh-answer" type="password" autocomplete="off" data-lpignore="true"></label><div class="button-row"><button type="submit" class="primary">Send response</button></div></form>
+          </section>
+          <section class="workflow-card">
+            <div class="card-heading"><span class="section-number">3</span><div><h2>Upload &amp; launch</h2><p id="launch-status">Prepare a run to begin.</p></div></div>
+            <div id="prepared-details" class="run-details"></div>
+            <label class="field hpc-setting">Remote parent folder<input id="remote-parent" placeholder="/rds/project/your_directory/simulations" spellcheck="false"><small>The named simulation folder will be created here.</small></label>
+            <div class="button-row"><button id="upload-run" class="secondary hpc-setting" disabled>Upload run</button><button id="setup-run" class="secondary" disabled>Set up environment</button><button id="submit-run" class="primary" disabled>Launch simulation</button></div>
+            <p id="environment-hint" class="hint">Environment setup installs this run's dependencies. Skip it when the chosen environment already has the required packages.</p>
+            <div class="button-row"><button id="go-monitor" class="text-button">Open monitor →</button><button id="cancel-run" class="quiet" disabled>Cancel job</button></div>
+          </section>
+          <section class="workflow-card"><h2 id="operation-name">Activity</h2><pre id="operation-output" class="terminal">No operation yet.</pre><p id="operation-error" class="inline-error" role="alert"></p></section>
+        </div>
+      </div>
+    </section>
+    <section id="view-monitor" class="workflow-view" hidden>
+      <div class="intro"><div><div class="eyebrow">FOLLOW THE PHYSICS</div><h1>Watch it evolve.</h1><p>Raw saved diagnostics. Full wavefunctions stay on the simulation machine.</p></div><div class="button-row"><button id="refresh-monitor" class="primary">Refresh now</button><label class="check-line"><input id="auto-refresh" type="checkbox"> Auto refresh</label><label class="field">Every <span class="unit">seconds</span><input id="refresh-seconds" type="number" min="5" value="15"></label></div></div>
+      <div class="workflow-card monitor-controls">
+        <label class="field">Stage<select id="monitor-stage"><option value="">Latest active stage</option></select></label>
+        <label class="field">Maximum k (μm⁻¹)<input id="k-max" type="number" min="0.01" step="any" placeholder="Full range"></label>
+        <label class="field">Energy unit (nK)<input id="energy-unit" type="number" min="0" step="any" value="6.22486135015"><small>39K, length unit 1 μm. Change for another mass.</small></label>
+      </div>
+      <p id="monitor-message" class="hint">Prepare or open a run, then refresh to see its saved data.</p>
+      <div id="scalar-cards" class="scalar-cards"></div>
+      <p class="hint scalar-note">Norm and kinetic energy retain their saved normalization. Angular momentum is the mean per particle (saved Lz divided by norm). Spectrum and image densities are not multiplied by atom number.</p>
+      <div class="plot-grid">
+        <section class="workflow-card"><h2>Momentum spectrum · log–log</h2><div id="spectrum-plot" class="monitor-plot" role="img" aria-label="Momentum spectrum · log–log"></div>
+          <div class="time-control"><label for="spectrum-time">Saved time <span id="spectrum-time-label">No samples</span></label><button id="spectrum-latest" class="quiet" type="button">Follow latest</button><input id="spectrum-time" type="range" min="0" max="0" value="0" step="1" disabled aria-label="spectrum saved time"></div>
+          <p id="spectrum-caption" class="plot-caption"></p>
+        </section>
+        <section class="workflow-card"><h2>Radial momentum density · linear–linear</h2><div id="radial-plot" class="monitor-plot" role="img" aria-label="Radial momentum density · linear–linear"></div>
+          <div class="time-control"><label for="radial-time">Saved time <span id="radial-time-label">No samples</span></label><button id="radial-latest" class="quiet" type="button">Follow latest</button><input id="radial-time" type="range" min="0" max="0" value="0" step="1" disabled aria-label="radial saved time"></div>
+          <p id="radial-caption" class="plot-caption"></p>
+        </section>
+        <section class="workflow-card">
+          <div class="plot-heading"><h2>2D image</h2><label class="check-line"><input id="image-log" type="checkbox" checked> Log colour</label></div>
+          <div class="image-controls">
+            <label class="field">Image<select id="monitor-image"><option value="density_xy">density_xy</option></select></label>
+            <label class="field">TOF view ± (μm⁻¹)<input id="image-limit" type="number" min="0" step="any" value="5"><small>0 shows the full saved range.</small></label>
+            <label class="field">Colour vmin<input id="image-vmin" type="number" step="any" placeholder="Auto"></label>
+            <label class="field">Colour vmax<input id="image-vmax" type="number" step="any" placeholder="Auto"></label>
+          </div>
+          <p class="hint">Blank limits use each image’s range. Enter limits to keep the colour scale fixed while sliding. Log colour requires positive limits; phase uses linear colour.</p>
+          <div id="image-plot" class="monitor-plot" role="img" aria-label="Density, momentum or phase image"></div>
+          <div class="time-control"><label for="image-time">Saved time <span id="image-time-label">No samples</span></label><button id="image-latest" class="quiet" type="button">Follow latest</button><input id="image-time" type="range" min="0" max="0" value="0" step="1" disabled aria-label="image saved time"></div>
+          <p id="image-caption" class="plot-caption"></p>
+        </section>
+        <section class="workflow-card">
+          <div class="plot-heading"><h2>Scalar history</h2><label class="field">Quantity<select id="scalar-quantity"><option value="norm">Norm</option><option value="E_kin">Kinetic energy</option><option value="Lz">Mean angular momentum per particle</option><option value="N_atoms">Atom number</option></select></label></div>
+          <div id="scalar-plot" class="monitor-plot" role="img" aria-label="Scalar diagnostic history"></div>
+          <div class="time-control"><label for="scalar-time">Saved time <span id="scalar-time-label">No samples</span></label><button id="scalar-latest" class="quiet" type="button">Follow latest</button><input id="scalar-time" type="range" min="0" max="0" value="0" step="1" disabled aria-label="scalar saved time"></div>
+          <p id="scalar-caption" class="plot-caption"></p>
+        </section>
+      </div>
+      <details class="workflow-card"><summary>Simulation log</summary><pre id="simulation-log" class="terminal">No log available yet.</pre></details>
+      <details class="workflow-card"><summary>View an existing local output folder</summary><label class="field">Run or monitor folder<input id="monitor-folder" placeholder="/path/to/monitor_data or a prepared simulation folder" spellcheck="false"></label><button id="open-monitor" class="secondary">Read this folder</button><p class="hint">This reads local files only. Refreshing the GUI does not change the simulation's sampling intervals.</p></details>
+    </section>
+  </main>
+  <dialog id="save-dialog">
+    <form method="dialog"><button class="close-dialog" aria-label="Close save dialog">×</button></form>
+    <div class="eyebrow">READY TO TAKE WITH YOU</div><h2>Save your configuration</h2><p>This saves a YAML file on this computer. Copy it to CSD3 when you are ready.</p>
+    <label class="field">Local file path<input id="save-path" type="text" spellcheck="false" placeholder="~/Downloads/experiment.yaml" aria-describedby="save-path-help"></label>
+    <p id="save-path-help">Check the full destination path, including the folder. Replace existing file applies to this path. Download instead uses your browser's download folder.</p>
+    <label class="check-line"><input id="overwrite" type="checkbox"> Replace existing file at this path</label>
+    <div id="save-error" class="inline-error" role="alert" hidden></div>
+    <div class="dialog-actions"><button id="download-yaml" class="secondary">Download instead</button><button id="write-yaml" class="primary">Save file</button></div>
+  </dialog>
+  <dialog id="replace-dialog">
+    <h2>Replace this draft?</h2><p>Your current browser draft will be replaced. Save it first if you want to keep it.</p>
+    <div class="dialog-actions"><button id="cancel-replace" class="secondary">Keep editing</button><button id="confirm-replace" class="primary">Replace draft</button></div>
+  </dialog>
+</body>
+</html>
