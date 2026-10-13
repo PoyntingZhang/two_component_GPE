@@ -10,9 +10,12 @@ python -u -m gpe.main config/run.yaml
 The direct example is `config/examples/kick_and_hold.yaml`. The runner requires
 NumPy, PyYAML and one CuPy wheel appropriate to the installed CUDA environment.
 
-Schema 3 stages evolve psi1 and psi2 together. Use `initial_state.type: continue`
-to carry both fields and their remaining norms between stages. Use `load` with
-a complete paired `psi_STEP.json` snapshot manifest to initialize a new stage.
+Schema 3 stages evolve psi1 and psi2 together. Set `type: continue` separately in
+`initial_state.component1` and `initial_state.component2` to carry each field and
+its remaining norm between stages. Use `type: load` with that component's NPY
+`path` to load a saved field, or `type: gaussian` with `sigma` to generate one.
+The saved JSON metadata and grid.npz must stay beside each NPY input. The two
+components can load different files. Old pair-level configurations still import.
 Stage time always starts at zero. Intervals count completed steps; zero disables.
 
 Output retains timestamp/stage subdirectories. Snapshots contain both fields.

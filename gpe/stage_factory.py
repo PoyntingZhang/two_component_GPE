@@ -34,9 +34,10 @@ def make_stages(path):
     data_dirs, monitor_dirs = set(), set()
     for index, settings in enumerate(config["stages"], 1):
         initial = copy.deepcopy(settings["initial_state"])
-        if initial["type"] == "load":
-            source = Path(initial["path"]).expanduser()
-            initial["path"] = str(source if source.is_absolute() else path.parent / source)
+        for component in initial.values():
+            if component["type"] == "load":
+                source = Path(component["path"]).expanduser()
+                component["path"] = str(source if source.is_absolute() else path.parent / source)
 
         def active(group):
             values = dict(settings[group])

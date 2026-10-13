@@ -54,8 +54,15 @@ replication. Check a completed output in Drive before a long run. See
 
 After reconnecting, rerun the setup cells and use **Reopen a saved run** with its
 Drive launch folder. Monitoring reads those files directly. To continue evolution,
-prepare a new run with `initial_state.type: load` and the complete `psi_STEP.json`
-path. This begins a new stage clock, not an automatic exact-time restart.
+prepare a new run and choose **Load a saved wavefunction** independently for each
+component under **Experiment → Evolution**. Enter the full path to its
+`psi1_STEP.npy` or `psi2_STEP.npy`. Keep its `psi_STEP.json` metadata and `grid.npz`
+beside it; the loader finds them automatically. The fields can come from different
+runs, or one can be a Gaussian or continue the previous stage. Match the grid and
+each selected source's reference atom number. See
+[the independent-load example](config/examples/load_independent.yaml).
+Existing pair-load YAMLs remain supported. Loading preserves norms and starts a
+new stage clock, not an automatic exact-time restart.
 
 ## Model and validation
 
@@ -74,4 +81,4 @@ python -m unittest discover -s tests -p test_propagators.py -v  # actual GPU che
 
 Local tests simulate Drive mounting and GPU launch controls. A real Colab/GPU
 launch, cloud persistence across runtime destruction, and 1024³ A100 memory use
-still require target-machine verification. No remote Git repository is configured.
+still require target-machine verification.

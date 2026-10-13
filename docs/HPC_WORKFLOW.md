@@ -18,8 +18,10 @@ SSH authentication uses the existing OpenSSH helper. Credentials are not written
 to the launch profile. Existing run folders are never overwritten. The remote
 scheduler, CUDA environment and project account must be supplied by the user.
 
-For loading a previous state, supply an absolute target path to its paired
-`psi_STEP.json` manifest; both component NPY files and grid.npz must be beside it.
+For loading a previous state, supply an absolute target NPY path separately for
+each component under its initial-state settings. The selected file's original
+`psi_STEP.json` metadata and grid.npz must be beside it. Sources can be mixed;
+an unselected companion NPY file is not required. Legacy pair-manifest paths work.
 No external snapshots are uploaded automatically.
 
 This two-component implementation has local/mocked regression coverage; it has

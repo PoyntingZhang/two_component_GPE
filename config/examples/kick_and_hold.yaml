@@ -15,10 +15,14 @@ stages:
     steps: 100
     dt: 0.002
   initial_state:
-    type: gaussian
-    sigma1: 3.0
-    sigma2: 3.0
-    path: ''
+    component1:
+      type: gaussian
+      sigma: 3.0
+      path: ''
+    component2:
+      type: gaussian
+      sigma: 3.0
+      path: ''
   potential1:
     static:
       enabled: false
@@ -80,10 +84,14 @@ stages:
     steps: 100
     dt: 0.002
   initial_state:
-    type: continue
-    sigma1: 3.0
-    sigma2: 3.0
-    path: ''
+    component1:
+      type: continue
+      sigma: 3.0
+      path: ''
+    component2:
+      type: continue
+      sigma: 3.0
+      path: ''
   potential1:
     static:
       enabled: true
@@ -145,10 +153,14 @@ stages:
     steps: 100
     dt: 0.002
   initial_state:
-    type: continue
-    sigma1: 3.0
-    sigma2: 3.0
-    path: ''
+    component1:
+      type: continue
+      sigma: 3.0
+      path: ''
+    component2:
+      type: continue
+      sigma: 3.0
+      path: ''
   potential1:
     static:
       enabled: false
